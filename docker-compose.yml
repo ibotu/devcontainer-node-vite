@@ -1,6 +1,10 @@
-version: "3.9"
+networks:
+  internal:
+    external: true
+
 services:
   frontend:
+    container_name: node_frontend
     build:
       context: frontend
       dockerfile: Dockerfile
@@ -10,15 +14,36 @@ services:
       # 相対パスではなく、フルパスで書く必要がある
       # 一方でDockerの外でも動かしたいので、
       # デフォルト値として相対パスを指定している
-      - type: bind
-        source: ${LOCAL_WORKSPACE_FOLDER:-.}/frontend
-        target: /app
-    command: npm run dev
+      - ${LOCAL_WORKSPACE_FOLDER:-.}/frontend:/app
     ports:
       - 30000:30000
     networks:
-      - myapp
+      - internal
+    command: npm run dev
+    deploy:
+      resources:
+        limits:
+          cpus: "${CPU_LIMIT:-1.0}"
+          memory: "${MEMORY_LIMIT:-256M}"
 
-networks:
-  myapp:
-    name: myapp
+  ratrace:
+    container_name: "ratrace_node2"
+    build:
+      context: ratrace
+      dockerfile: Dockerfile
+    volumes:
+      - ${LOCAL_WORKSPACE_FOLDER:-.}/ratrace:/app
+      - /srv/ratrace.geekinsight.online2:/app/dist
+    ports: [ 30001 ]
+    networks: [ internal ]
+    restart: always
+    command: pnpm run dev
+    #environment:
+      #- NODE_ENV=${NODE_ENV}
+      #- REACT_APP_API_URL=${REACT_APP_API_URL}
+      #- PORT=${PORT}
+    deploy:
+      resources:
+        limits:
+          cpus: "${CPU_LIMIT:-1.0}"
+          memory: "${MEMORY_LIMIT:-256M}"
